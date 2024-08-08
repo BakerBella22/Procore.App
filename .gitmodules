@@ -1,3 +1,6 @@
 [submodule "libs/forked"]
 	path = libs/forked
 	url = https://github.com/BakerBella22/MAD.API.Procore.git
+[submodule "libs/fork"]
+	path = libs/fork
+	url = https://github.com/BakerBella22/MAD.API.Procore.git
