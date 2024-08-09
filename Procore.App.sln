@@ -3,11 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35122.118
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Procore.App", "Procore.App\Procore.App.csproj", "{C28100C4-1DDF-4408-9335-7DC5B82032E8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Procore.App", "Procore.App\Procore.App.csproj", "{C28100C4-1DDF-4408-9335-7DC5B82032E8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Procore.Console", "Procore.Console\Procore.Console.csproj", "{AA8664AA-A4D0-4A13-9AFC-C647EB8C784C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Procore.Core", "Procore.Core\Procore.Core.csproj", "{BB82A229-8BC9-478D-8716-1EB263C434FE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Procore.Core", "Procore.Core\Procore.Core.csproj", "{BB82A229-8BC9-478D-8716-1EB263C434FE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MAD.API.Procore", "libs\fork\MAD.API.Procore\MAD.API.Procore.csproj", "{9D28C731-9E19-487D-9FF6-D00471AF1622}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Procore.Consoles", "Procore.Consoles\Procore.Consoles.csproj", "{83BAB34D-3198-4193-AC2A-141AF2118878}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,14 +21,18 @@ Global
 		{C28100C4-1DDF-4408-9335-7DC5B82032E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C28100C4-1DDF-4408-9335-7DC5B82032E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C28100C4-1DDF-4408-9335-7DC5B82032E8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AA8664AA-A4D0-4A13-9AFC-C647EB8C784C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AA8664AA-A4D0-4A13-9AFC-C647EB8C784C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AA8664AA-A4D0-4A13-9AFC-C647EB8C784C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AA8664AA-A4D0-4A13-9AFC-C647EB8C784C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BB82A229-8BC9-478D-8716-1EB263C434FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BB82A229-8BC9-478D-8716-1EB263C434FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BB82A229-8BC9-478D-8716-1EB263C434FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BB82A229-8BC9-478D-8716-1EB263C434FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D28C731-9E19-487D-9FF6-D00471AF1622}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D28C731-9E19-487D-9FF6-D00471AF1622}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D28C731-9E19-487D-9FF6-D00471AF1622}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D28C731-9E19-487D-9FF6-D00471AF1622}.Release|Any CPU.Build.0 = Release|Any CPU
+		{83BAB34D-3198-4193-AC2A-141AF2118878}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{83BAB34D-3198-4193-AC2A-141AF2118878}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{83BAB34D-3198-4193-AC2A-141AF2118878}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{83BAB34D-3198-4193-AC2A-141AF2118878}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

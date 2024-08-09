@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\libs\fork\MAD.API.Procore\MAD.API.Procore.csproj" />
+  </ItemGroup>
+
 </Project>
