@@ -6,11 +6,8 @@ namespace Procore.Core
 {
     public class Class1
     {
-        public async Task<ArrayOfCompany> TestConnection()
+        public async Task<ArrayOfCompany> TestConnection(string clientId, string clientSecret)
         {
-            // TODO: Get these from a configuration file or ENVIRNMENT variables.
-            var clientId = "fCgrzqNS655oEbR0etUvhct7d83Lvm7AWK4rqzpsPeo";
-            var clientSecret = "c6ENh_uzCfjXbuKLLs93fdjk6dcIpwo7nOPKfMUatMw";
 
             var httpClient = new HttpClient();
 
