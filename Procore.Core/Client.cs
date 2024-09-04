@@ -10,24 +10,23 @@ using System.Net.Http.Headers;
 
 namespace Procore.Core
 {
-    public class Class1
+    public class Client
     {
-        private readonly ProcoreApiClientOptions _opts;
         private readonly ProcoreApiClient _client;
 
-        public Class1(string clientId, string clientSecret)
+        public Client(Config config)
         {
             var httpClient = new HttpClient();
 
-            // First get the OAuth token exchange
+            // Get the OAuth token exchange
             var exchange = new MAD.API.Procore.OAuthTokenExchange();
-            var token = exchange.GetAccessToken(clientId, clientSecret, httpClient, true).Result;
+            var token = exchange.GetAccessToken(config.ClientId, config.ClientSecret, httpClient, config.IsSandbox).Result;
 
-            _opts = new ProcoreApiClientOptions()
+            var _opts = new ProcoreApiClientOptions()
             {
-                ClientId = clientId,
-                ClientSecret = clientSecret,
-                IsSandbox = true,
+                ClientId = config.ClientId,
+                ClientSecret = config.ClientSecret,
+                IsSandbox = config.IsSandbox,
                 RefreshToken = token.RefreshToken
             };
 
@@ -38,53 +37,49 @@ namespace Procore.Core
             _client = new MAD.API.Procore.ProcoreApiClient(clientHttpClient, _opts);
         }
 
+        // Method to test the connection (retrieve companies)
         public async Task<ArrayOfCompany> TestConnection()
         {
-            // Fetch the list of companies
             var request = new MAD.API.Procore.Endpoints.Companies.ListCompaniesRequest();
             var response = await _client.GetResponseAsync(request);
-
             return response.Result;
         }
 
+        // Method to retrieve projects
         public async Task<IEnumerable<Project>> GetProjects(long companyId)
         {
-            // Create request for listing projects
             var projectRequest = new ListProjectsRequest
             {
                 CompanyId = companyId,
-                ByStatus = null // Remove filter to get all projects regardless of status
+                ByStatus = null // Retrieve all projects regardless of status
             };
 
             var projectResponse = await _client.GetResponseAsync(projectRequest);
-
             return projectResponse.Result;
         }
 
+        // Method to retrieve checklists (inspections)
         public async Task<IEnumerable<ChecklistsGroupedByTemplate>> GetChecklists(long projectId)
         {
-            // Create request for listing checklists
             var checklistRequest = new ListChecklistsRequest
             {
                 ProjectId = projectId,
-                View = null // Example: Use null or adjust filters as needed
+                View = null // Retrieve all inspections 
             };
 
             var checklistResponse = await _client.GetResponseAsync(checklistRequest);
-
             return checklistResponse.Result;
         }
 
+        // Method to retrieve observations
         public async Task<IEnumerable<ObservationItem>> GetObservations(long projectId)
         {
-            // Create request for listing observations
             var observationRequest = new ListObservationItemsRequest
             {
                 ProjectId = projectId
             };
 
             var observationResponse = await _client.GetResponseAsync(observationRequest);
-
             return observationResponse.Result;
         }
     }

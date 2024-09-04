@@ -3,7 +3,7 @@ using MAD.API.Procore.Endpoints.Companies;
 using MAD.API.Procore.Endpoints.Projects.Models;
 using Microsoft.Extensions.Configuration;
 
-Console.WriteLine("Hello, World!");
+Console.WriteLine("Welcome to the Custom Extractor!");
 
 IConfiguration configuration = new ConfigurationBuilder()
                .AddJsonFile("appsettings.json", true, true)
@@ -11,8 +11,11 @@ IConfiguration configuration = new ConfigurationBuilder()
                .AddUserSecrets<Program>()
                .Build();
 
+// Retrieve config settings
 var clientId = configuration["ProcoreClientId"];
 var clientSecret = configuration["ProcoreClientSecret"];
+var isSandbox = bool.Parse(configuration["ProcoreIsSandbox"] ?? "true"); // default to true
+var baseUrl = configuration["ProcoreBaseUrl"];
 
 if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
 {
@@ -20,14 +23,19 @@ if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecre
     return;
 }
 
-var myclient = new Procore.Core.Class1(clientId, clientSecret);
+// Create the config object
+var config = new Procore.Core.Config(clientId, clientSecret, isSandbox, baseUrl);
 
-var result = await myclient.TestConnection();
-Console.WriteLine($"Companies fetched: {result.Count}");
+// Initialize the client with the config object
+var procoreClient = new Procore.Core.Client(config);
+
+// Test connection
+var result = await procoreClient.TestConnection();
+Console.WriteLine($"Companies fetched: {result.Count()}");
 
 // Fetching projects
 var companyId = 4271877;
-var projects = await myclient.GetProjects(companyId);
+var projects = await procoreClient.GetProjects(companyId);
 
 Console.WriteLine($"Projects fetched for company ID {companyId}: {projects.Count()}");
 
@@ -35,9 +43,8 @@ foreach (var project in projects)
 {
     Console.WriteLine($"Project ID: {project.Id}, Name: {project.Name}");
 
-    // Fetch checklists for each project
-    var checklists = await myclient.GetChecklists(project.Id);
-
+    // Fetch inspections for each project
+    var checklists = await procoreClient.GetChecklists(project.Id);
     Console.WriteLine($"Inspections fetched for project ID {project.Id}: {checklists.Count()}");
 
     foreach (var checklistGroup in checklists)
@@ -50,8 +57,7 @@ foreach (var project in projects)
     }
 
     // Fetch observations for each project
-    var observations = await myclient.GetObservations(project.Id);
-
+    var observations = await procoreClient.GetObservations(project.Id);
     Console.WriteLine($"Observations fetched for project ID {project.Id}: {observations.Count()}");
 
     foreach (var observation in observations)
