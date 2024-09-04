@@ -1,5 +1,9 @@
 ﻿using MAD.API.Procore;
+using MAD.API.Procore.Endpoints.Checklists;
+using MAD.API.Procore.Endpoints.Checklists.Models;
 using MAD.API.Procore.Endpoints.Companies.Models;
+using MAD.API.Procore.Endpoints.Observations.Models;
+using MAD.API.Procore.Endpoints.Observations;
 using MAD.API.Procore.Endpoints.Projects;
 using MAD.API.Procore.Endpoints.Projects.Models;
 using System.Net.Http.Headers;
@@ -8,69 +12,80 @@ namespace Procore.Core
 {
     public class Class1
     {
-        public async Task<ArrayOfCompany> TestConnection(string clientId, string clientSecret)
-        {
+        private readonly ProcoreApiClientOptions _opts;
+        private readonly ProcoreApiClient _client;
 
+        public Class1(string clientId, string clientSecret)
+        {
             var httpClient = new HttpClient();
 
-            // First get the Oauth token exchange
-
+            // First get the OAuth token exchange
             var exchange = new MAD.API.Procore.OAuthTokenExchange();
+            var token = exchange.GetAccessToken(clientId, clientSecret, httpClient, true).Result;
 
-            var token = await exchange.GetAccessToken(clientId, clientSecret, httpClient, true);
-
-            var factory = new MAD.API.Procore.DefaultProcoreApiClientFactory();
-
-            var opts = new ProcoreApiClientOptions()
+            _opts = new ProcoreApiClientOptions()
             {
                 ClientId = clientId,
                 ClientSecret = clientSecret,
                 IsSandbox = true,
                 RefreshToken = token.RefreshToken
-                
             };
-            var clientHttpClient = factory.CreateHttpClient(opts);
+
+            var factory = new MAD.API.Procore.DefaultProcoreApiClientFactory();
+            var clientHttpClient = factory.CreateHttpClient(_opts);
             clientHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-            var client = new MAD.API.Procore.ProcoreApiClient(clientHttpClient, opts);
-                
-                //factory.Create(opts);
 
+            _client = new MAD.API.Procore.ProcoreApiClient(clientHttpClient, _opts);
+        }
+
+        public async Task<ArrayOfCompany> TestConnection()
+        {
+            // Fetch the list of companies
             var request = new MAD.API.Procore.Endpoints.Companies.ListCompaniesRequest();
-
-            var response = await client.GetResponseAsync(request);
+            var response = await _client.GetResponseAsync(request);
 
             return response.Result;
-
         }
-        public async Task<IEnumerable<Project>> GetProjects(string clientId, string clientSecret, long companyId)
+
+        public async Task<IEnumerable<Project>> GetProjects(long companyId)
         {
-            var httpClient = new HttpClient();
-
-            // First get the Oauth token exchange
-            var exchange = new MAD.API.Procore.OAuthTokenExchange();
-            var token = await exchange.GetAccessToken(clientId, clientSecret, httpClient, true);
-
-            var factory = new MAD.API.Procore.DefaultProcoreApiClientFactory();
-            var opts = new ProcoreApiClientOptions()
-            {
-                ClientId = clientId,
-                ClientSecret = clientSecret,
-                IsSandbox = true,
-                RefreshToken = token.RefreshToken
-            };
-
-            var clientHttpClient = factory.CreateHttpClient(opts);
-            clientHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-            var client = new MAD.API.Procore.ProcoreApiClient(clientHttpClient, opts);
-
             // Create request for listing projects
             var projectRequest = new ListProjectsRequest
             {
-                CompanyId = companyId
+                CompanyId = companyId,
+                ByStatus = null // Remove filter to get all projects regardless of status
             };
 
-            var projectResponse = await client.GetResponseAsync(projectRequest);
+            var projectResponse = await _client.GetResponseAsync(projectRequest);
+
             return projectResponse.Result;
+        }
+
+        public async Task<IEnumerable<ChecklistsGroupedByTemplate>> GetChecklists(long projectId)
+        {
+            // Create request for listing checklists
+            var checklistRequest = new ListChecklistsRequest
+            {
+                ProjectId = projectId,
+                View = null // Example: Use null or adjust filters as needed
+            };
+
+            var checklistResponse = await _client.GetResponseAsync(checklistRequest);
+
+            return checklistResponse.Result;
+        }
+
+        public async Task<IEnumerable<ObservationItem>> GetObservations(long projectId)
+        {
+            // Create request for listing observations
+            var observationRequest = new ListObservationItemsRequest
+            {
+                ProjectId = projectId
+            };
+
+            var observationResponse = await _client.GetResponseAsync(observationRequest);
+
+            return observationResponse.Result;
         }
     }
 }
