@@ -1,22 +1,26 @@
-﻿using MAD.API.Procore;
+﻿using MAD.API.Procore.Endpoints.Checklists.Models;
 using MAD.API.Procore.Endpoints.Checklists;
-using MAD.API.Procore.Endpoints.Checklists.Models;
-using MAD.API.Procore.Endpoints.Companies.Models;
-using MAD.API.Procore.Endpoints.Observations.Models;
-using MAD.API.Procore.Endpoints.Observations;
-using MAD.API.Procore.Endpoints.Projects;
 using MAD.API.Procore.Endpoints.Projects.Models;
+using MAD.API.Procore.Endpoints.Projects;
+using MAD.API.Procore;
 using System.Net.Http.Headers;
+using MAD.API.Procore.Endpoints.Observations;
+using MAD.API.Procore.Endpoints.Observations.Models;
+using System.Collections.Generic;
 
 namespace Procore.Core
 {
     public class Client
     {
         private readonly ProcoreApiClient _client;
+        private readonly string _companyId; // Store companyId as a class-level field
 
-        public Client(Config config)
+        public Client(Config config, string companyId)
         {
-            var httpClient = new HttpClient();
+            var httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromMinutes(5) // Set the timeout to 5 minutes
+            };
 
             // Get the OAuth token exchange
             var exchange = new MAD.API.Procore.OAuthTokenExchange();
@@ -34,23 +38,19 @@ namespace Procore.Core
             var clientHttpClient = factory.CreateHttpClient(_opts);
             clientHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
 
+            // Set Procore-Company-Id header
+            clientHttpClient.DefaultRequestHeaders.Add("Procore-Company-Id", companyId);
+
             _client = new MAD.API.Procore.ProcoreApiClient(clientHttpClient, _opts);
+            _companyId = companyId; // Assign companyId to the class-level variable
         }
 
-        // Method to test the connection (retrieve companies)
-        public async Task<ArrayOfCompany> TestConnection()
-        {
-            var request = new MAD.API.Procore.Endpoints.Companies.ListCompaniesRequest();
-            var response = await _client.GetResponseAsync(request);
-            return response.Result;
-        }
-
-        // Method to retrieve projects
-        public async Task<IEnumerable<Project>> GetProjects(long companyId)
+        // Method to retrieve projects for a company
+        public async Task<IEnumerable<Project>> GetProjects()
         {
             var projectRequest = new ListProjectsRequest
             {
-                CompanyId = companyId,
+                CompanyId = long.Parse(_companyId), // Use the class-level _companyId variable
                 ByStatus = null // Retrieve all projects regardless of status
             };
 
@@ -58,29 +58,81 @@ namespace Procore.Core
             return projectResponse.Result;
         }
 
-        // Method to retrieve checklists (inspections)
-        public async Task<IEnumerable<ChecklistsGroupedByTemplate>> GetChecklists(long projectId)
+        // Updated method to retrieve all checklists (inspections) with pagination
+        public async Task<IEnumerable<Checklist>> GetAllInspections(long projectId)
         {
-            var checklistRequest = new ListChecklistsRequest
-            {
-                ProjectId = projectId,
-                View = null // Retrieve all inspections 
-            };
+            const int pageSize = 1000;
+            int currentPage = 1;
+            List<Checklist> allChecklists = new List<Checklist>();
 
-            var checklistResponse = await _client.GetResponseAsync(checklistRequest);
-            return checklistResponse.Result;
+            while (true)
+            {
+                var checklistRequest = new ListChecklistsInspectionsRequest
+                {
+                    ProjectId = projectId,
+                    Page = currentPage,
+                    PerPage = pageSize
+                };
+
+                var checklistResponse = await _client.GetResponseAsync(checklistRequest);
+                var checklists = checklistResponse.Result;
+
+                if (checklists == null || !checklists.Any())
+                {
+                    break; // Stop if there are no more results
+                }
+
+                allChecklists.AddRange(checklists);
+
+                // If we received less than the page size, no more pages left
+                if (checklists.Count() < pageSize)
+                {
+                    break;
+                }
+
+                currentPage++; // Move to the next page
+            }
+
+            return allChecklists;
         }
 
-        // Method to retrieve observations
+
+        //Method to retrieve observations
         public async Task<IEnumerable<ObservationItem>> GetObservations(long projectId)
         {
-            var observationRequest = new ListObservationItemsRequest
-            {
-                ProjectId = projectId
-            };
+            const int pageSize = 1000;
+            int currentPage = 1;
+            List<ObservationItem> allObservations = new List<ObservationItem>();
 
-            var observationResponse = await _client.GetResponseAsync(observationRequest);
-            return observationResponse.Result;
+            while (true)
+            {
+                var observationRequest = new ListObservationItemsRequest
+                {
+                    ProjectId = projectId, // Pass the project ID to the request
+                    Page = currentPage,    // Set the current page
+                    PerPage = pageSize     // Set the page size
+                };
+
+                var observationResponse = await _client.GetResponseAsync(observationRequest);
+                var observations = observationResponse.Result;
+
+                if (observations == null || !observations.Any())
+                {
+                    break; // Stop if there are no more results
+                }
+
+                allObservations.AddRange(observations);
+
+                // If we received less than the page size, no more pages left
+                if (observations.Count() < pageSize)
+                {
+                    break;
+                }
+
+                currentPage++; // Move to the next page
+            }
+
+            return allObservations;
         }
     }
 }

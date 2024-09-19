@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="PDFNet" Version="10.12.0.2" />
+    <PackageReference Include="PDFsharp" Version="6.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\libs\fork\MAD.API.Procore\MAD.API.Procore.csproj" />
   </ItemGroup>
 
