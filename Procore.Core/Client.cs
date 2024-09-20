@@ -1,25 +1,31 @@
-﻿using MAD.API.Procore.Endpoints.Checklists.Models;
+﻿using MAD.API.Procore;
 using MAD.API.Procore.Endpoints.Checklists;
-using MAD.API.Procore.Endpoints.Projects.Models;
-using MAD.API.Procore.Endpoints.Projects;
-using MAD.API.Procore;
-using System.Net.Http.Headers;
-using MAD.API.Procore.Endpoints.Observations;
+using MAD.API.Procore.Endpoints.Checklists.Models;
+using MAD.API.Procore.Endpoints.Companies.Models;
 using MAD.API.Procore.Endpoints.Observations.Models;
+using MAD.API.Procore.Endpoints.Observations;
+using MAD.API.Procore.Endpoints.Projects;
+using MAD.API.Procore.Endpoints.Projects.Models;
+using PdfSharp.Drawing;
+using PdfSharp.Pdf;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
 
 namespace Procore.Core
 {
     public class Client
     {
         private readonly ProcoreApiClient _client;
-        private readonly string _companyId; // Store companyId as a class-level field
+        private readonly string _companyId;
 
         public Client(Config config, string companyId)
         {
             var httpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromMinutes(5) // Set the timeout to 5 minutes
+                Timeout = TimeSpan.FromMinutes(5) // Sets the timeout to 5 minutes
             };
 
             // Get the OAuth token exchange
@@ -42,7 +48,7 @@ namespace Procore.Core
             clientHttpClient.DefaultRequestHeaders.Add("Procore-Company-Id", companyId);
 
             _client = new MAD.API.Procore.ProcoreApiClient(clientHttpClient, _opts);
-            _companyId = companyId; // Assign companyId to the class-level variable
+            _companyId = companyId;
         }
 
         // Method to retrieve projects for a company
@@ -50,7 +56,7 @@ namespace Procore.Core
         {
             var projectRequest = new ListProjectsRequest
             {
-                CompanyId = long.Parse(_companyId), // Use the class-level _companyId variable
+                CompanyId = long.Parse(_companyId),
                 ByStatus = null // Retrieve all projects regardless of status
             };
 
@@ -59,15 +65,15 @@ namespace Procore.Core
         }
 
         // Updated method to retrieve all checklists (inspections) with pagination
-        public async Task<IEnumerable<Checklist>> GetAllInspections(long projectId)
+        public async Task<List<(string Id, string Name, string Status)>> GetAllInspections(long projectId)
         {
             const int pageSize = 1000;
             int currentPage = 1;
-            List<Checklist> allChecklists = new List<Checklist>();
+            var allInspections = new List<(string Id, string Name, string Status)>();
 
             while (true)
             {
-                var checklistRequest = new ListChecklistsInspectionsRequest
+                var checklistRequest = new ListChecklistsRequest
                 {
                     ProjectId = projectId,
                     Page = currentPage,
@@ -82,9 +88,15 @@ namespace Procore.Core
                     break; // Stop if there are no more results
                 }
 
-                allChecklists.AddRange(checklists);
+                foreach (var checklistGroup in checklists)
+                {
+                    foreach (var checklist in checklistGroup.Lists)
+                    {
+                        allInspections.Add((checklist.Id.ToString(), checklist.Name, checklist.Status));
+                    }
+                }
 
-                // If we received less than the page size, no more pages left
+                // If the number of checklists retrieved is less than the page size, we're done
                 if (checklists.Count() < pageSize)
                 {
                     break;
@@ -93,24 +105,23 @@ namespace Procore.Core
                 currentPage++; // Move to the next page
             }
 
-            return allChecklists;
+            return allInspections;
         }
 
-
-        //Method to retrieve observations
-        public async Task<IEnumerable<ObservationItem>> GetObservations(long projectId)
+        // Method to retrieve all observations with pagination
+        public async Task<List<ObservationItem>> GetAllObservations(long projectId)
         {
             const int pageSize = 1000;
             int currentPage = 1;
-            List<ObservationItem> allObservations = new List<ObservationItem>();
+            var allObservations = new List<ObservationItem>();
 
             while (true)
             {
                 var observationRequest = new ListObservationItemsRequest
                 {
-                    ProjectId = projectId, // Pass the project ID to the request
-                    Page = currentPage,    // Set the current page
-                    PerPage = pageSize     // Set the page size
+                    ProjectId = projectId,
+                    Page = currentPage,
+                    PerPage = pageSize
                 };
 
                 var observationResponse = await _client.GetResponseAsync(observationRequest);
@@ -123,7 +134,7 @@ namespace Procore.Core
 
                 allObservations.AddRange(observations);
 
-                // If we received less than the page size, no more pages left
+                // If the number of observations retrieved is less than the page size, we're done
                 if (observations.Count() < pageSize)
                 {
                     break;
