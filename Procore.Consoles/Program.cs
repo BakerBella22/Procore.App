@@ -2,6 +2,8 @@
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 using Procore.Core;
+using System;
+using System.Threading.Tasks;
 
 class Program
 {
@@ -59,6 +61,10 @@ class Program
     // Method to create a PDF file using PDFSharp
     private static void CreatePdf(string projectName, List<(string Id, string Name, string Status)> inspectionData)
     {
+
+        //Display a message at the start of the PDF creation process
+        Console.WriteLine($"Starting PDF creation for project: {projectName}");
+
         // Create a new PDF document
         PdfDocument document = new PdfDocument();
         document.Info.Title = $"Inspection Data for {projectName}";

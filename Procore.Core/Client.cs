@@ -1,18 +1,12 @@
-﻿using MAD.API.Procore;
+﻿using MAD.API.Procore.Endpoints.Checklists.Models;
 using MAD.API.Procore.Endpoints.Checklists;
-using MAD.API.Procore.Endpoints.Checklists.Models;
-using MAD.API.Procore.Endpoints.Companies.Models;
-using MAD.API.Procore.Endpoints.Observations.Models;
-using MAD.API.Procore.Endpoints.Observations;
-using MAD.API.Procore.Endpoints.Projects;
 using MAD.API.Procore.Endpoints.Projects.Models;
-using PdfSharp.Drawing;
-using PdfSharp.Pdf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using MAD.API.Procore.Endpoints.Projects;
+using MAD.API.Procore;
 using System.Net.Http.Headers;
-using System.Threading.Tasks;
+using MAD.API.Procore.Endpoints.Observations;
+using MAD.API.Procore.Endpoints.Observations.Models;
+using System.Collections.Generic;
 
 namespace Procore.Core
 {
@@ -25,7 +19,7 @@ namespace Procore.Core
         {
             var httpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromMinutes(5) // Sets the timeout to 5 minutes
+                Timeout = TimeSpan.FromMinutes(10)
             };
 
             // Get the OAuth token exchange
@@ -64,7 +58,7 @@ namespace Procore.Core
             return projectResponse.Result;
         }
 
-        // Updated method to retrieve all checklists (inspections) with pagination
+        // Method to retrieve all checklists (inspections) with pagination
         public async Task<List<(string Id, string Name, string Status)>> GetAllInspections(long projectId)
         {
             const int pageSize = 1000;
