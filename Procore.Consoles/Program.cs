@@ -43,7 +43,7 @@ var config = new Procore.Core.Config(clientId, clientSecret, isSandbox, baseUrl)
 // Initialize the client with the config object and pass the companyId
 var procoreClient = new Client(config, companyId);
 
-// Fetch projects
+/*// Fetch projects
 var projects = await procoreClient.GetProjects();
 foreach (var project in projects)
 {
@@ -89,5 +89,13 @@ foreach (var project in projects)
     // Output the time taken
     Console.WriteLine($"PDF generated successfully at {pdfFilename}");
     Console.WriteLine($"PDF generation for project '{project.Name}' completed in {stopwatch.Elapsed.TotalSeconds} seconds.");
-}
+}*/
+
+// Example usage for creating an observation PDF
+
+long projectId = 562949953697461; 
+long observationId = 562949954381592; 
+
+await procoreClient.CreateObservationPdf(projectId, observationId);
+
 

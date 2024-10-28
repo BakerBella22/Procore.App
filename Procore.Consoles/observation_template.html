@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Observation Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 12px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #2E8B57;
+            font-size: 20px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .header-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+            .header-table td {
+                vertical-align: top;
+            }
+
+        .content-block {
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+
+        .content-block-title {
+            background-color: #2E8B57;
+            color: #ffffff;
+            padding: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            page-break-inside: avoid;
+        }
+
+        th, td {
+            border: 1px solid #dddddd;
+            padding: 5px;
+            text-align: left;
+            word-wrap: break-word;
+            font-size: 11px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-size: 11px;
+        }
+
+        .section-title {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #2E8B57;
+            text-decoration: underline;
+        }
+
+        .description {
+            white-space: pre-wrap;
+            page-break-inside: avoid;
+            font-size: 12px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 10px;
+            color: #555555;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <table class="header-table">
+        <tr>
+            <td>{{CompanyName}}</td>
+            <td style="text-align: right;">Project: {{Project}}</td>
+        </tr>
+        <tr>
+            <td>{{Address}}</td>
+            <td style="text-align: right;">{{Location}}</td>
+        </tr>
+        <tr>
+            <td>P: {{PhoneNumber}}</td>
+            <td></td>
+        </tr>
+    </table>
+
+    <h2>{{Name}}</h2>
+
+    <div class="content-block">
+        <div class="content-block-title">Observation Details</div>
+        <table>
+            <tr><th>Number</th><td>{{Number}}</td></tr>
+            <tr><th>Status</th><td>{{Status}}</td></tr>
+            <tr><th>Priority</th><td>{{Priority}}</td></tr>
+            <tr><th>Date Created</th><td>{{DateCreated}}</td></tr>
+            <tr><th>Due Date</th><td>{{DueDate}}</td></tr>
+            <tr><th>Notification Date</th><td>{{DateNotified}}</td></tr>
+            <tr><th>Private</th><td>{{Personal}}</td></tr>
+        </table>
+    </div>
+
+    <div class="content-block">
+        <div class="content-block-title">Assignment</div>
+        <table>
+            <tr><th>Created By</th><td>{{CreatedBy}}</td></tr>
+            <tr><th>Assignee</th><td>{{Assignee}}</td></tr>
+        </table>
+    </div>
+
+    <div class="content-block page-break">
+        <div class="content-block-title">Description</div>
+        <p class="description">{{Description}}</p>
+    </div>
+
+    <div class="content-block page-break">
+        <div class="content-block-title">Additional Information</div>
+        <table>
+            <tr><th>Origin</th><td>{{Origin}}</td></tr>
+            <tr><th>Type</th><td>{{Type}}</td></tr>
+            <tr><th>Custom Fields</th><td>{{CustomFields}}</td></tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        PDF generated on {{PdfCreationDateTime}}
+    </div>
+</body>
+</html>
