@@ -1,159 +1,93 @@
-﻿using Microsoft.Extensions.Configuration;
-using PdfSharp.Drawing;
+﻿using System;
+using System.IO;
+using System.Collections.Generic;
 using PdfSharp.Pdf;
-using Procore.Core;
-using System;
+using TheArtOfDev.HtmlRenderer.PdfSharp;
+using MAD.API.Procore.Endpoints.Checklists.Models;
+using MAD.API.Procore.Endpoints.Projects.Models;
+using MAD.API.Procore;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Procore.Core;
+using System.Diagnostics;
+using System.Text;
 
-class Program
+// Register code pages encoding provider
+System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+
+Console.WriteLine("Welcome to the Custom Extractor!");
+
+IConfiguration configuration = new ConfigurationBuilder()
+           .AddJsonFile("appsettings.json", true, true)
+           .AddJsonFile("appsettings.local.json", true, true)
+           .AddUserSecrets<Program>()
+           .Build();
+
+var clientId = configuration["ProcoreClientId"];
+var clientSecret = configuration["ProcoreClientSecret"];
+var isSandbox = bool.Parse(configuration["ProcoreIsSandbox"] ?? "false");
+var baseUrl = configuration["ProcoreBaseUrl"];
+var companyId = "562949953438199";
+var shouldCreatePdf = bool.Parse(configuration["CreatePdf"] ?? "true");
+
+if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret) || string.IsNullOrWhiteSpace(companyId))
 {
-    static async Task Main(string[] args)
-    {
-        Console.WriteLine("Welcome to the Custom Extractor!");
-
-        IConfiguration configuration = new ConfigurationBuilder()
-                   .AddJsonFile("appsettings.json", true, true)
-                   .AddJsonFile("appsettings.local.json", true, true)
-                   .AddUserSecrets<Program>()
-                   .Build();
-
-        // Retrieve config settings
-        var clientId = configuration["ProcoreClientId"];
-        var clientSecret = configuration["ProcoreClientSecret"];
-        var isSandbox = bool.Parse(configuration["ProcoreIsSandbox"] ?? "false");
-        var baseUrl = configuration["ProcoreBaseUrl"];
-        var companyId = "562949953438199"; // Procore-Company-Id
-        var shouldCreatePdf = bool.Parse(configuration["CreatePdf"] ?? "true"); // Config flag to control PDF creation
-
-        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
-        {
-            Console.WriteLine("Please provide ProcoreClientId and ProcoreClientSecret in appsettings.local.json");
-            return;
-        }
-
-        // Create the config object
-        var config = new Procore.Core.Config(clientId, clientSecret, isSandbox, baseUrl);
-
-        // Initialize the client with the config object and pass the companyId
-        var procoreClient = new Client(config, companyId);
-
-        // Fetch projects
-        var projects = await procoreClient.GetProjects();
-        foreach (var project in projects)
-        {
-            Console.WriteLine($"Project ID: {project.Id}, Name: {project.Name}");
-
-            // Fetch inspection data with pagination
-            var inspectionData = await procoreClient.GetAllInspections(project.Id);
-            Console.WriteLine($"Total Inspections fetched for project ID {project.Id}: {inspectionData.Count}");
-
-            // Fetch and count observations with pagination
-            var observations = await procoreClient.GetAllObservations(project.Id);
-            Console.WriteLine($"Total Observations fetched for project ID {project.Id}: {observations.Count}");
-
-            // If the flag is set to true, generate the PDF
-            if (shouldCreatePdf)
-            {
-                CreatePdf(project.Name, inspectionData);
-            }
-        }
-    }
-    // Method to create a PDF file using PDFSharp
-    private static void CreatePdf(string projectName, List<(string Id, string Name, string Status)> inspectionData)
-    {
-
-        //Display a message at the start of the PDF creation process
-        Console.WriteLine($"Starting PDF creation for project: {projectName}");
-
-        // Create a new PDF document
-        PdfDocument document = new PdfDocument();
-        document.Info.Title = $"Inspection Data for {projectName}";
-
-        // Create an empty page
-        PdfPage page = document.AddPage();
-        XGraphics gfx = XGraphics.FromPdfPage(page);
-
-        // Set up a smaller font
-        XFont font = new XFont("Verdana", 10);
-
-        // Table column positions
-        double col1 = 40; // ID column
-        double col2 = 150; // Name column
-        double col3 = 400; // Status column
-        double row = 50; // Starting row position
-
-        double rowHeight = 20; // Height for each row of text
-
-        // Write headers for the table
-        gfx.DrawString("ID", font, XBrushes.Black, new XRect(col1, row, page.Width, page.Height), XStringFormats.TopLeft);
-        gfx.DrawString("Name", font, XBrushes.Black, new XRect(col2, row, page.Width, page.Height), XStringFormats.TopLeft);
-        gfx.DrawString("Status", font, XBrushes.Black, new XRect(col3, row, page.Width, page.Height), XStringFormats.TopLeft);
-        row += 30; // Space after header
-
-        // Define max column widths for text wrapping
-        double col2MaxWidth = col3 - col2 - 10; // Width for "Name" column
-        double col3MaxWidth = page.Width - col3 - 40; // Width for "Status" column
-
-        // Write the inspection data in table format
-        foreach (var data in inspectionData)
-        {
-            // Wrap text for Name and Status columns
-            row = DrawWrappedText(gfx, font, data.Id, col1, row, rowHeight, page.Width);
-            row = DrawWrappedText(gfx, font, data.Name, col2, row, rowHeight, col2MaxWidth);
-            row = DrawWrappedText(gfx, font, data.Status, col3, row, rowHeight, col3MaxWidth);
-
-            // Add some space between rows
-            row += rowHeight;
-
-            // If row position exceeds the page height, create a new page
-            if (row > page.Height - 50)
-            {
-                page = document.AddPage();
-                gfx = XGraphics.FromPdfPage(page);
-                row = 50; // Reset row position for the new page
-            }
-        }
-
-        // Save the document to a file
-        string filename = $"{projectName}_Inspection_Data.pdf";
-        document.Save(filename);
-
-        Console.WriteLine($"PDF Created: {filename}");
-    }
-
-    // Helper method to wrap text within column width
-    private static double DrawWrappedText(XGraphics gfx, XFont font, string text, double x, double y, double rowHeight, double maxWidth)
-    {
-        // Split the text into words
-        var words = text.Split(' ');
-
-        // Initialize the current line
-        string currentLine = "";
-        double currentY = y;
-
-        // Process each word
-        foreach (var word in words)
-        {
-            // Check if the current line exceeds the column width
-            if (gfx.MeasureString(currentLine + word, font).Width > maxWidth)
-            {
-                // Draw the current line and move to the next line
-                gfx.DrawString(currentLine, font, XBrushes.Black, new XRect(x, currentY, maxWidth, rowHeight), XStringFormats.TopLeft);
-                currentLine = word + " ";
-                currentY += rowHeight; // Move to the next row
-            }
-            else
-            {
-                currentLine += word + " "; // Add the word to the current line
-            }
-        }
-
-        // Draw the last line
-        if (!string.IsNullOrEmpty(currentLine))
-        {
-            gfx.DrawString(currentLine, font, XBrushes.Black, new XRect(x, currentY, maxWidth, rowHeight), XStringFormats.TopLeft);
-        }
-
-        return currentY + rowHeight; // Return the updated Y position
-    }
+    Console.WriteLine("Please provide ProcoreClientId, ProcoreClientSecret, and ProcoreCompanyId in appsettings.local.json");
+    return;
 }
+
+// Create the config object
+var config = new Procore.Core.Config(clientId, clientSecret, isSandbox, baseUrl);
+
+// Initialize the client with the config object and pass the companyId
+var procoreClient = new Client(config, companyId);
+
+// Fetch projects
+var projects = await procoreClient.GetProjects();
+foreach (var project in projects)
+{
+    Console.WriteLine($"Project ID: {project.Id}, Name: {project.Name}");
+
+    // Fetch inspection data (ID, Name, Status) for the project
+    var inspectionData = await procoreClient.GetAllInspections(project.Id);
+
+    // Generate the inspection rows HTML using StringBuilder
+    StringBuilder inspectionRowsBuilder = new StringBuilder();
+    foreach (var data in inspectionData)
+    {
+        inspectionRowsBuilder.AppendLine($"<tr><td>{data.Id}</td><td>{data.Name}</td><td>{data.Status}</td></tr>");
+    }
+    string inspectionRows = inspectionRowsBuilder.ToString();
+
+
+    // Path to the HTML template
+    string htmlTemplatePath = "template.html";
+
+    // Read the HTML template from the file
+    string htmlTemplate = File.ReadAllText(htmlTemplatePath);
+
+    // Replace the placeholder with the inspection rows
+    string htmlContent = htmlTemplate.Replace("{{InspectionRows}}", inspectionRows);
+
+    // Output message when starting to create the PDF
+    Console.WriteLine($"Starting PDF generation for project '{project.Name}' at {DateTime.Now}");
+
+    // Create and start stopwatch
+    Stopwatch stopwatch = Stopwatch.StartNew();
+
+    // Generate the PDF from the HTML content
+    PdfDocument pdf = PdfGenerator.GeneratePdf(htmlContent, PdfSharp.PageSize.A4);
+
+    // Save the PDF document
+    string pdfFilename = $"{project.Name}_Inspection_Report.pdf";
+    pdf.Save(pdfFilename);
+
+    // Stop stopwatch
+    stopwatch.Stop();
+
+    // Output the time taken
+    Console.WriteLine($"PDF generated successfully at {pdfFilename}");
+    Console.WriteLine($"PDF generation for project '{project.Name}' completed in {stopwatch.Elapsed.TotalSeconds} seconds.");
+}
+

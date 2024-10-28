@@ -19,7 +19,7 @@ namespace Procore.Core
         {
             var httpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromMinutes(10)
+                Timeout = TimeSpan.FromMinutes(30)
             };
 
             // Get the OAuth token exchange
@@ -36,6 +36,10 @@ namespace Procore.Core
 
             var factory = new MAD.API.Procore.DefaultProcoreApiClientFactory();
             var clientHttpClient = factory.CreateHttpClient(_opts);
+
+            // **Set the Timeout on clientHttpClient**
+            clientHttpClient.Timeout = TimeSpan.FromMinutes(30);
+
             clientHttpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
 
             // Set Procore-Company-Id header
