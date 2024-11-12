@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Inspection Report</title>
+    <style>
+        /* Styling for headers, tables, and sections */
+        .section-title {
+            font-weight: bold;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #2E8B57;
+        }
+
+        .inspection-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+            .inspection-table th, .inspection-table td {
+                border: 1px solid #ddd;
+                padding: 5px;
+                text-align: center;
+            }
+
+            .inspection-table th {
+                background-color: #f2f2f2;
+            }
+
+        .summary {
+            font-style: italic;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>{{Name}} - Inspection Report</h2>
+
+    <table class="header-table">
+        <tr><td>{{CompanyName}}</td><td style="text-align:right;">Project: {{Project}}</td></tr>
+        <tr><td>Address</td><td style="text-align:right;">{{Location}}</td></tr>
+    </table>
+
+    <p class="content">{{Description}}</p>
+
+    {{Sections}}
+
+    <div class="footer">PDF generated on {{PdfCreationDateTime}}</div>
+</body>
+</html>

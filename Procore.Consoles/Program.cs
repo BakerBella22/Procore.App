@@ -43,59 +43,18 @@ var config = new Procore.Core.Config(clientId, clientSecret, isSandbox, baseUrl)
 // Initialize the client with the config object and pass the companyId
 var procoreClient = new Client(config, companyId);
 
-/*// Fetch projects
-var projects = await procoreClient.GetProjects();
-foreach (var project in projects)
-{
-    Console.WriteLine($"Project ID: {project.Id}, Name: {project.Name}");
-
-    // Fetch inspection data (ID, Name, Status) for the project
-    var inspectionData = await procoreClient.GetAllInspections(project.Id);
-
-    // Generate the inspection rows HTML using StringBuilder
-    StringBuilder inspectionRowsBuilder = new StringBuilder();
-    foreach (var data in inspectionData)
-    {
-        inspectionRowsBuilder.AppendLine($"<tr><td>{data.Id}</td><td>{data.Name}</td><td>{data.Status}</td></tr>");
-    }
-    string inspectionRows = inspectionRowsBuilder.ToString();
-
-
-    // Path to the HTML template
-    string htmlTemplatePath = "template.html";
-
-    // Read the HTML template from the file
-    string htmlTemplate = File.ReadAllText(htmlTemplatePath);
-
-    // Replace the placeholder with the inspection rows
-    string htmlContent = htmlTemplate.Replace("{{InspectionRows}}", inspectionRows);
-
-    // Output message when starting to create the PDF
-    Console.WriteLine($"Starting PDF generation for project '{project.Name}' at {DateTime.Now}");
-
-    // Create and start stopwatch
-    Stopwatch stopwatch = Stopwatch.StartNew();
-
-    // Generate the PDF from the HTML content
-    PdfDocument pdf = PdfGenerator.GeneratePdf(htmlContent, PdfSharp.PageSize.A4);
-
-    // Save the PDF document
-    string pdfFilename = $"{project.Name}_Inspection_Report.pdf";
-    pdf.Save(pdfFilename);
-
-    // Stop stopwatch
-    stopwatch.Stop();
-
-    // Output the time taken
-    Console.WriteLine($"PDF generated successfully at {pdfFilename}");
-    Console.WriteLine($"PDF generation for project '{project.Name}' completed in {stopwatch.Elapsed.TotalSeconds} seconds.");
-}*/
-
 // Example usage for creating an observation PDF
+long projectId = 562949953697461;
+long observationId = 562949954381592;
 
-long projectId = 562949953697461; 
-long observationId = 562949954381592; 
+// Create the PDF byte array
+byte[] pdfBytes = await procoreClient.CreateObservationPdf(projectId, observationId);
 
-await procoreClient.CreateObservationPdf(projectId, observationId);
+// Define the file path where you want to save the PDF
+string pdfFilePath = "Observation_Report.pdf";
 
+// Save the byte array to a PDF file
+await File.WriteAllBytesAsync(pdfFilePath, pdfBytes);
+
+Console.WriteLine($"PDF saved to {pdfFilePath}");
 

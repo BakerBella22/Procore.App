@@ -1,8 +1,236 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model IEnumerable<MAD.API.Procore.Endpoints.Projects.Models.Project>
+
+@{
+    ViewData["Title"] = "Custom Extractor - Project List";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<h1>@ViewData["Title"]</h1>
+
+<label for="projectDropdown">Select a Project:</label>
+<select id="projectDropdown" name="projectDropdown" onchange="handleProjectSelection()">
+    <option value="">--Select Project--</option>
+    @foreach (var project in Model)
+    {
+        <option value="@project.Id">@project.Name (ID: @project.Id)</option>
+    }
+</select>
+
+<div id="selectionOptions" style="display:none; margin-top: 15px;">
+    <label>Select Option:</label>
+    <button onclick="fetchData('inspections')">View Inspections</button>
+    <button onclick="fetchData('observations')">View Observations</button>
 </div>
+
+<div id="filterOptions" style="display:none; margin-top: 15px;">
+    <label for="statusFilter">Filter by Status:</label>
+    <select id="statusFilter" name="statusFilter" onchange="applyFilter()">
+        <option value="all">All</option>
+        <option value="open">Open</option>
+        <option value="closed">Closed</option>
+        <option value="in review">In Review</option>
+    </select>
+</div>
+
+<div id="resultDisplay" style="margin-top: 20px;">
+    <!-- Results will be displayed here -->
+</div>
+
+<div style="margin-top: 20px;">
+    <!-- Single Export PDF Button to test PDF generation -->
+    <button onclick="exportSelectedObservations()">Export PDF for Selected Observations</button>
+    <button onclick="exportSelectedInspections()">Export PDF for Selected Inspections</button>
+</div>
+
+@section Scripts {
+    <script>
+
+        let currentPage = 1;
+        const pageSize = 25;
+        let currentType = ''; // Keeps track of whether we're viewing inspections or observations
+
+        function handleProjectSelection() {
+            const projectDropdown = document.getElementById('projectDropdown');
+            const selectedProjectId = projectDropdown.value;
+            const selectionOptions = document.getElementById('selectionOptions');
+
+            if (selectedProjectId) {
+                selectionOptions.style.display = 'block';
+            } else {
+                selectionOptions.style.display = 'none';
+                document.getElementById('resultDisplay').innerHTML = '';
+            }
+        }
+
+        function updateFilterOptions(type) {
+            const statusFilter = document.getElementById('statusFilter');
+            const options = type === "inspections"
+                ? ["all", "open", "closed", "in review"]
+                : ["all", "open", "closed", "ready_for_review"];
+
+            statusFilter.innerHTML = options
+                .map(status => `<option value="${status}">${capitalizeFirstLetter(status.replace("_", " "))}</option>`)
+                .join("");
+        }
+
+        async function fetchData(type, page = 1) {
+            const projectId = document.getElementById('projectDropdown').value;
+            const resultDisplay = document.getElementById('resultDisplay');
+            const filterOptions = document.getElementById('filterOptions');
+
+            if (!projectId) {
+                alert("Please select a project.");
+                return;
+            }
+
+            currentPage = page;
+            currentType = type;
+            const pageSize = 25; // Ensure consistent page size
+            const url = `/Home/Get${type.charAt(0).toUpperCase() + type.slice(1)}?projectId=${projectId}&page=${page}&pageSize=${pageSize}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                originalData = data;
+                displayResults(type, data, projectId, page);
+                filterOptions.style.display = 'block';
+            } catch (error) {
+                resultDisplay.innerHTML = `<p style="color: red;">Error fetching data: ${error.message}</p>`;
+            }
+        }
+
+        function displayResults(type, data, projectId, page) {
+            const resultDisplay = document.getElementById('resultDisplay');
+            const pageSize = 25;
+
+            let content = `<h3>${type.charAt(0).toUpperCase() + type.slice(1)} (Page ${page}):</h3><ul>`;
+
+            if (data.length === 0) {
+                content += `<li>No ${type} found for this project.</li>`;
+            } else {
+                data.forEach(item => {
+                    const checkboxClass = type === 'inspections' ? 'inspection-checkbox' : 'observation-checkbox';
+                    content += `
+                        <li class="${type}-item">
+                            <input type="checkbox" class="${checkboxClass}" value="${item.id}" />
+                            ID: ${item.id}, Name: ${item.name}, Status: ${item.status || 'N/A'}
+                        </li>`;
+                });
+            }
+            content += '</ul>';
+
+            // Add pagination controls
+            content += `
+                <div class="pagination-controls">
+                    <button onclick="fetchData('${type}', ${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+                    <button onclick="fetchData('${type}', ${page + 1})" ${data.length < pageSize ? 'disabled' : ''}>Next</button>
+                </div>`;
+
+            resultDisplay.innerHTML = content;
+        }
+
+        function applyFilter() {
+            const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+            const filteredData = statusFilter === 'all'
+                ? originalData
+                : originalData.filter(item => item.status.toLowerCase() === statusFilter);
+
+            displayResults(currentType, filteredData, null, currentPage);
+        }
+
+        async function exportSelectedObservations() {
+            const projectId = document.getElementById('projectDropdown').value;
+            if (!projectId) {
+                alert("Please select a project.");
+                return;
+            }
+
+            // Collect all selected observation IDs
+            const selectedObservations = Array.from(document.querySelectorAll('.observation-checkbox:checked'))
+                .map(checkbox => checkbox.value);  // Collect the ID from the checkbox value
+
+            if (selectedObservations.length === 0) {
+                alert("Please select at least one observation.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/Home/ExportSelectedObservations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        projectId: parseInt(projectId),
+                        observationIds: selectedObservations // Send the selected IDs
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok. Status: ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `Selected_Observations_Reports.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(downloadUrl);
+
+            } catch (error) {
+                console.error("Error during PDF export:", error);
+                alert("Error: " + error.message);
+            }
+        }
+
+        async function exportSelectedInspections() {
+            const projectId = document.getElementById('projectDropdown').value;
+            if (!projectId) {
+                alert("Please select a project.");
+                return;
+            }
+
+            // Collect all selected inspection IDs
+            const selectedInspections = Array.from(document.querySelectorAll('.inspection-checkbox:checked'))
+                .map(checkbox => checkbox.value);  // Collect the ID from the checkbox value
+
+            if (selectedInspections.length === 0) {
+                alert("Please select at least one inspection.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/Home/ExportSelectedInspections', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        projectId: parseInt(projectId),
+                        inspectionIds: selectedInspections // Send the selected IDs
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok. Status: ${response.status}`);
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `Selected_Inspections_Reports.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(downloadUrl);
+
+            } catch (error) {
+                console.error("Error during PDF export:", error);
+                alert("Error: " + error.message);
+            }
+        }
+    </script>
+}

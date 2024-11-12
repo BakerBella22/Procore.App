@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="NewFolder1\**" />
+    <EmbeddedResource Remove="NewFolder1\**" />
+    <None Remove="NewFolder1\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="DinkToPdf" Version="1.0.8" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.67" />
     <PackageReference Include="HtmlRenderer.Core" Version="1.5.0.6" />
