@@ -2,7 +2,7 @@
 using Azure.Storage.Queues;
 using Procore.App.Models;
 
-namespace Procore.App.Services
+/*namespace Procore.App.Services
 {
 
     public class QueueListenerService : BackgroundService
@@ -68,4 +68,4 @@ namespace Procore.App.Services
             return;
         }
     }
-}
+}*/

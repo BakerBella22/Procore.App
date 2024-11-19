@@ -2,7 +2,7 @@
 using Azure.Storage.Queues;
 using Procore.App.Models;
 
-namespace Procore.App.Services
+/*namespace Procore.App.Services
 {
 
     public class QueueService
@@ -29,4 +29,4 @@ namespace Procore.App.Services
         }
 
     }
-}
+}*/

@@ -35,16 +35,32 @@
     <!-- Results will be displayed here -->
 </div>
 
+<!-- Loading Indicator -->
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:1000; text-align:center;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);">
+        <div class="tenor-gif-embed" data-postid="14032704" data-share-method="host" data-aspect-ratio="1.27941" data-width="100%">
+            <a href="https://tenor.com/view/pusheen-harry-potter-broomstick-gif-14032704">Pusheen Harry Potter Sticker</a>
+            from <a href="https://tenor.com/search/pusheen-stickers">Pusheen Stickers</a>
+        </div>
+        <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+        <p style="font-size:1.2em; font-weight:bold; margin-top:20px;">Please Wait, Data Loading...</p>
+    </div>
+</div>
+
+<!-- Download Message -->
+<div id="downloadIndicator" style="display:none; text-align:center; margin-top:20px;">
+    <p>Your download is in progress. This may take a few moments...</p>
+</div>
+
 <!-- Select button where format is string, input is coming from the export -->
 
-<div style="margin-top: 20px;">
-    <!-- Single Export PDF Button to test PDF generation -->
-    <button onclick="exportSelectedObservations()">Export PDF for Selected Observations</button>
+<div id="exportInspections" style="display:none; margin-top:20px;">
     <button onclick="exportSelectedInspections()">Export PDF for Selected Inspections</button>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css">
+<div id="exportObservations" style="display:none; margin-top:20px;">
+    <button onclick="exportSelectedObservations()">Export PDF for Selected Observations</button>
+</div>
 
 @section Scripts {
     <script>
@@ -90,6 +106,13 @@
 
             currentType = type;
 
+            // Show the loading overlay
+            document.getElementById('loadingOverlay').style.display = 'block';
+
+            // Hide both export buttons initially
+            document.getElementById('exportInspections').style.display = 'none';
+            document.getElementById('exportObservations').style.display = 'none';
+
             // Fetch all data
             const url = `/Home/GetAll${type.charAt(0).toUpperCase() + type.slice(1)}?projectId=${projectId}`;
 
@@ -101,8 +124,18 @@
                 displayResults(); // Display all data
                 updateFilterOptions(type);
                 filterOptions.style.display = 'block';
+
+                // Show the appropriate export button
+                if (type === 'inspections') {
+                    document.getElementById('exportInspections').style.display = 'block';
+                } else if (type === 'observations') {
+                    document.getElementById('exportObservations').style.display = 'block';
+                }
             } catch (error) {
                 resultDisplay.innerHTML = `<p style="color: red;">Error fetching data: ${error.message}</p>`;
+            } finally {
+                // Hide the loading overlay
+                document.getElementById('loadingOverlay').style.display = 'none';
             }
         }
 
@@ -125,7 +158,9 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="border-bottom: 1px solid #000;">
-                            <th style="text-align: left;">Select</th>
+                            <th style="text-align: left;">
+                                <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" />
+                            </th>
                             <th style="text-align: left;">ID</th>
                             <th style="text-align: left;">Name</th>
                             <th style="text-align: left;">Status</th>
@@ -141,10 +176,11 @@
             } else {
                 paginatedData.forEach(item => {
                     const checkboxClass = currentType === 'inspections' ? 'inspection-checkbox' : 'observation-checkbox';
+                    const isChecked = item.isSelected ? 'checked' : ''; // Reflect selection state
                     content += `
                         <tr>
                             <td>
-                                <input type="checkbox" class="${checkboxClass}" value="${item.id}" />
+                                <input type="checkbox" class="${checkboxClass}" value="${item.id}" ${isChecked} />
                             </td>
                             <td>${item.id}</td>
                             <td>${item.name}</td>
@@ -162,6 +198,9 @@
                 </div>`;
 
             resultDisplay.innerHTML = content;
+
+            // Update the "Select All" checkbox state
+            updateSelectAllCheckboxState();
         }
 
         function changePage(direction) {
@@ -172,6 +211,48 @@
         function capitalizeFirstLetter(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
         }
+        //Selects all checkboxes
+        function toggleSelectAll(selectAllCheckbox) {
+            const isChecked = selectAllCheckbox.checked;
+            const checkboxes = document.querySelectorAll(
+                currentType === 'inspections' ? '.inspection-checkbox' : '.observation-checkbox'
+            );
+
+            // Check or uncheck all checkboxes on the current page
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+
+            // Track selected items across all pages
+            filteredData.forEach(item => {
+                item.isSelected = isChecked;
+            });
+        }
+
+        function updateSelectAllCheckboxState() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const allSelected = filteredData.every(item => item.isSelected);
+            const noneSelected = filteredData.every(item => !item.isSelected);
+
+            selectAllCheckbox.checked = allSelected;
+            selectAllCheckbox.indeterminate = !allSelected && !noneSelected;
+        }
+
+        document.addEventListener('change', event => {
+            if (event.target.classList.contains('inspection-checkbox') || event.target.classList.contains('observation-checkbox')) {
+                const itemId = event.target.value;
+                const isChecked = event.target.checked;
+
+                // Update the selection state in filteredData
+                const item = filteredData.find(item => item.id === itemId);
+                if (item) {
+                    item.isSelected = isChecked;
+                }
+
+                // Update the "Select All" checkbox state
+                updateSelectAllCheckboxState();
+            }
+        });
 
         async function exportSelectedObservations() {
             const projectId = document.getElementById('projectDropdown').value;
@@ -190,6 +271,7 @@
             }
 
             try {
+                alert("Download started for selected observations.");
                 const response = await fetch('/Home/ExportSelectedObservations', {
                     method: 'POST',
                     headers: {
@@ -238,6 +320,7 @@
             }
 
             try {
+                alert("Download started for selected inspections.");
                 const response = await fetch('/Home/ExportSelectedInspections', {
                     method: 'POST',
                     headers: {
@@ -268,6 +351,21 @@
                 alert("Error: " + error.message);
             }
         }
+
+        async function fetchNextPage(type) {
+            currentPage++;
+            const url = `/Home/Get${type}?projectId=${projectId}&page=${currentPage}&pageSize=${pageSize}`;
+
+            try {
+                const response = await fetch(url);
+                const newData = await response.json();
+                allData.push(...newData);
+                displayResults();
+            } catch (error) {
+                console.error("Error fetching next page:", error);
+            }
+        }
+
     </script>
     <style>
         table {
@@ -298,5 +396,4 @@
                 margin: 0 5px;
             }
     </style>
-
 }

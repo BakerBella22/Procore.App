@@ -12,13 +12,13 @@ builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnCh
                      .AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true)
                      .AddUserSecrets<Program>();
 
-builder.Services.AddHostedService<QueueListenerService>();
+//builder.Services.AddHostedService<QueueListenerService>();
 
 // Register services
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
 builder.Services.AddScoped<ProjectService>();
-builder.Services.AddScoped<QueueService>();
+//builder.Services.AddScoped<QueueService>();
 
 // Register Client with DI, providing configuration parameters
 builder.Services.AddScoped(sp =>

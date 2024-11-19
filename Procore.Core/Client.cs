@@ -362,7 +362,7 @@ namespace Procore.Core
                 .Replace("{{Origin}}", observation.Origin != null ? $"{observation.Origin.Type}" : "N/A")
                 .Replace("{{Type}}", observation.Type != null ? observation.Type.Name : "N/A")
                 .Replace("{{CustomFields}}", customFieldsFormatted)
-                .Replace("{{PdfCreationDateTime}}", pdfCreationDateTime); 
+                .Replace("{{PdfCreationDateTime}}", pdfCreationDateTime);
 
             return htmlContent;
         }
