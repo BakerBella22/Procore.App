@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
+using Procore.App.Models;
 using Procore.App.Services;
 using Procore.Core;
 using System.IO.Compression;
@@ -16,11 +17,14 @@ namespace Procore.App.Controllers
     {
         private readonly ProjectService _projectService;
         private readonly Client _client;
+        private readonly QueueService queueService;
 
-        public HomeController(ProjectService projectService, Client client)
+        //TODO: Security: Add Authorize attribute to this controller based on what we can get from ProCore when running as a sidebar app
+        public HomeController(ProjectService projectService, Client client, QueueService queueService)
         {
             _projectService = projectService;
             _client = client;
+            this.queueService = queueService;
         }
 
         public async Task<IActionResult> Index()
@@ -90,21 +94,23 @@ namespace Procore.App.Controllers
             return Json(inspections.Select(i => new { i.Id, i.Name, i.Status }));
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllInspections(long projectId)
-        {
-            var inspections = await _client.GetAllInspections(projectId);
-            return Json(inspections.Select(i => new { i.Id, i.Name, i.Status }));
-        }
-
         [HttpPost]
         public async Task<IActionResult> ExportSelectedObservations([FromBody] ObservationExportRequest request)
         {
+
+            //TODO: Create item in Table "Jobs" with the information of the request
+
+            //TODO: Send a message to the queue with the jobid
+
+            await queueService.EnqueueItem(new ProcessItemDto { Id = "1", FileName = "Test" });
+
+
             if (request == null || request.ObservationIds == null || request.ObservationIds.Count == 0)
             {
                 return BadRequest("No observations selected.");
             }
 
+            //Move the next following lines into QueueListenerService.cs and return an object with the jobId
             try
             {
                 using (var memoryStream = new MemoryStream())
@@ -126,6 +132,8 @@ namespace Procore.App.Controllers
                     }
                     memoryStream.Position = 0; // Reset stream position
 
+                    // TODO: Save the ZIP file to Azure Blob Storage in the folder /jobs/{jobId}
+
                     // Return the ZIP file as a downloadable response
                     return File(memoryStream.ToArray(), "application/zip", "Selected_Observations_Reports.zip");
                 }
@@ -139,6 +147,7 @@ namespace Procore.App.Controllers
 
         public class ObservationExportRequest
         {
+            // THIS IS PROBABLY A REALLY GOOD CANDIATE FOR A QUEUE DTO
             public long ProjectId { get; set; }
             public List<string> ObservationIds { get; set; }
         }
