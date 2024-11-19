@@ -1,7 +1,7 @@
 ﻿@model IEnumerable<MAD.API.Procore.Endpoints.Projects.Models.Project>
 
 @{
-    ViewData["Title"] = "Custom Extractor - Project List";
+    ViewData["Title"] = "Extractor Patronum";
 }
 
 <h1>@ViewData["Title"]</h1>
@@ -35,18 +35,24 @@
     <!-- Results will be displayed here -->
 </div>
 
+<!-- Select button where format is string, input is coming from the export -->
+
 <div style="margin-top: 20px;">
     <!-- Single Export PDF Button to test PDF generation -->
     <button onclick="exportSelectedObservations()">Export PDF for Selected Observations</button>
     <button onclick="exportSelectedInspections()">Export PDF for Selected Inspections</button>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css">
+
 @section Scripts {
     <script>
-
+        let allData = []; // Store all data initially
+        let filteredData = []; // Store filtered data
         let currentPage = 1;
         const pageSize = 25;
-        let currentType = ''; // Keeps track of whether we're viewing inspections or observations
+        let currentType = '';
 
         function handleProjectSelection() {
             const projectDropdown = document.getElementById('projectDropdown');
@@ -65,14 +71,14 @@
             const statusFilter = document.getElementById('statusFilter');
             const options = type === "inspections"
                 ? ["all", "open", "closed", "in review"]
-                : ["all", "open", "closed", "ready_for_review"];
+                : ["all", "open", "closed", "ready_for_review", "initiated"];
 
             statusFilter.innerHTML = options
                 .map(status => `<option value="${status}">${capitalizeFirstLetter(status.replace("_", " "))}</option>`)
                 .join("");
         }
 
-        async function fetchData(type, page = 1) {
+        async function fetchData(type) {
             const projectId = document.getElementById('projectDropdown').value;
             const resultDisplay = document.getElementById('resultDisplay');
             const filterOptions = document.getElementById('filterOptions');
@@ -82,59 +88,89 @@
                 return;
             }
 
-            currentPage = page;
             currentType = type;
-            const pageSize = 25; // Ensure consistent page size
-            const url = `/Home/Get${type.charAt(0).toUpperCase() + type.slice(1)}?projectId=${projectId}&page=${page}&pageSize=${pageSize}`;
+
+            // Fetch all data
+            const url = `/Home/GetAll${type.charAt(0).toUpperCase() + type.slice(1)}?projectId=${projectId}`;
 
             try {
                 const response = await fetch(url);
-                const data = await response.json();
-                originalData = data;
-                displayResults(type, data, projectId, page);
+                allData = await response.json(); // Store all data
+                filteredData = [...allData]; // Initially, filtered data is the same as all data
+                currentPage = 1; // Reset pagination
+                displayResults(); // Display all data
+                updateFilterOptions(type);
                 filterOptions.style.display = 'block';
             } catch (error) {
                 resultDisplay.innerHTML = `<p style="color: red;">Error fetching data: ${error.message}</p>`;
             }
         }
 
-        function displayResults(type, data, projectId, page) {
+        function applyFilter() {
+            const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+            filteredData = statusFilter === 'all'
+                ? [...allData] // Reset to all data if no filter is applied
+                : allData.filter(item => item.status.toLowerCase() === statusFilter);
+
+            currentPage = 1; // Reset to the first page
+            displayResults(); // Display filtered data
+        }
+
+        function displayResults() {
             const resultDisplay = document.getElementById('resultDisplay');
-            const pageSize = 25;
+            const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-            let content = `<h3>${type.charAt(0).toUpperCase() + type.slice(1)} (Page ${page}):</h3><ul>`;
+            let content = `
+                <h3>${capitalizeFirstLetter(currentType)} (Page ${currentPage}):</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #000;">
+                            <th style="text-align: left;">Select</th>
+                            <th style="text-align: left;">ID</th>
+                            <th style="text-align: left;">Name</th>
+                            <th style="text-align: left;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
 
-            if (data.length === 0) {
-                content += `<li>No ${type} found for this project.</li>`;
+            if (paginatedData.length === 0) {
+                content += `
+                    <tr>
+                        <td colspan="4" style="text-align: center;">No ${currentType} found for this project.</td>
+                    </tr>`;
             } else {
-                data.forEach(item => {
-                    const checkboxClass = type === 'inspections' ? 'inspection-checkbox' : 'observation-checkbox';
+                paginatedData.forEach(item => {
+                    const checkboxClass = currentType === 'inspections' ? 'inspection-checkbox' : 'observation-checkbox';
                     content += `
-                        <li class="${type}-item">
-                            <input type="checkbox" class="${checkboxClass}" value="${item.id}" />
-                            ID: ${item.id}, Name: ${item.name}, Status: ${item.status || 'N/A'}
-                        </li>`;
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="${checkboxClass}" value="${item.id}" />
+                            </td>
+                            <td>${item.id}</td>
+                            <td>${item.name}</td>
+                            <td>${capitalizeFirstLetter(item.status.replace("_", " ")) || 'N/A'}</td>
+                        </tr>`;
                 });
             }
-            content += '</ul>';
 
-            // Add pagination controls
             content += `
-                <div class="pagination-controls">
-                    <button onclick="fetchData('${type}', ${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
-                    <button onclick="fetchData('${type}', ${page + 1})" ${data.length < pageSize ? 'disabled' : ''}>Next</button>
+                    </tbody>
+                </table>
+                <div class="pagination-controls" style="margin-top: 10px;">
+                    <button onclick="changePage(-1)" ${currentPage === 1 ? 'disabled' : ''}>Previous</button>
+                    <button onclick="changePage(1)" ${paginatedData.length < pageSize ? 'disabled' : ''}>Next</button>
                 </div>`;
 
             resultDisplay.innerHTML = content;
         }
 
-        function applyFilter() {
-            const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
-            const filteredData = statusFilter === 'all'
-                ? originalData
-                : originalData.filter(item => item.status.toLowerCase() === statusFilter);
+        function changePage(direction) {
+            currentPage += direction;
+            displayResults(); // Display results for the new page
+        }
 
-            displayResults(currentType, filteredData, null, currentPage);
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
         }
 
         async function exportSelectedObservations() {
@@ -233,4 +269,34 @@
             }
         }
     </script>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            border-bottom: 1px solid #000;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .pagination-controls {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+            .pagination-controls button {
+                padding: 5px 10px;
+                margin: 0 5px;
+            }
+    </style>
+
 }

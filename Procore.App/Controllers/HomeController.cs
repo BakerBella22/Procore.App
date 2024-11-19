@@ -37,6 +37,13 @@ namespace Procore.App.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> GetAllObservations(long projectId)
+        {
+            var observations = await _client.GetAllObservations(projectId);
+            return Json(observations.Select(o => new { o.Id, o.Name, o.Status }));
+        }
+
+        [HttpGet]
         public async Task<IActionResult> GetFilteredObservations(long projectId, string status = "all", int page = 1, int pageSize = 25)
         {
             var observations = await _client.GetAllObservations(projectId);
@@ -80,6 +87,13 @@ namespace Procore.App.Controllers
         public async Task<IActionResult> GetInspections(long projectId, int page = 1, int pageSize = 25)
         {
             var inspections = await _client.GetInspectionsPaged(projectId, page, pageSize);
+            return Json(inspections.Select(i => new { i.Id, i.Name, i.Status }));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllInspections(long projectId)
+        {
+            var inspections = await _client.GetAllInspections(projectId);
             return Json(inspections.Select(i => new { i.Id, i.Name, i.Status }));
         }
 
@@ -173,5 +187,6 @@ namespace Procore.App.Controllers
             public long ProjectId { get; set; }
             public List<string> InspectionIds { get; set; }
         }
+
     }
 }

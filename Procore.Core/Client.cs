@@ -102,42 +102,12 @@ namespace Procore.Core
         public async Task<List<(string Id, string Name, string Status)>> GetAllInspections(long projectId)
         {
             const int pageSize = 1000;
-            int currentPage = 1;
-            var allInspections = new List<(string Id, string Name, string Status)>();
 
-            while (true)
-            {
-                var checklistRequest = new ListChecklistsInspectionsRequest
-                {
-                    ProjectId = projectId,
-                    Page = currentPage,
-                    PerPage = pageSize
-                };
+            var tasks = Enumerable.Range(1, 10) // Assume maximum of 10 pages
+                .Select(page => GetInspectionsPaged(projectId, page, pageSize));
 
-                var checklistResponse = await _client.GetResponseAsync(checklistRequest);
-                var checklists = checklistResponse.Result;
-
-                if (checklists == null || !checklists.Any())
-                {
-                    break; // Stop if there are no more results
-                }
-
-                // Add each checklist inspection to the list
-                foreach (var checklist in checklists)
-                {
-                    allInspections.Add((checklist.Id.ToString(), checklist.Name, checklist.Status));
-                }
-
-                // Stop if the last page of results is smaller than page size
-                if (checklists.Count() < pageSize)
-                {
-                    break;
-                }
-
-                currentPage++; // Move to the next page
-            }
-
-            return allInspections;
+            var results = await Task.WhenAll(tasks);
+            return results.SelectMany(r => r).ToList();
         }
 
         //Method to return specific inspection 
@@ -177,84 +147,110 @@ namespace Procore.Core
             return null; // Return null if no inspection was found
         }
 
-    private string GenerateInspectionHtml(Checklist inspection)
+        //Method to return checklist items
+        public async Task<List<ChecklistItem>> GetChecklistItems(long projectId, long listId)
+        {
+            const int pageSize = 1000;
+            int currentPage = 1;
+            var allChecklistItems = new List<ChecklistItem>();
+
+            while (true)
+            {
+                var checklistItemsRequest = new ListChecklistItemsRequest
+                {
+                    ProjectId = projectId,
+                    ListId = listId, // Correct property name
+                    Page = currentPage,
+                    PerPage = pageSize
+                };
+
+                var checklistItemsResponse = await _client.GetResponseAsync(checklistItemsRequest);
+
+                // Access the Result property of the response
+                var checklistItems = checklistItemsResponse?.Result;
+
+                if (checklistItems == null || !checklistItems.Any())
+                {
+                    break; // No more items to fetch
+                }
+
+                allChecklistItems.AddRange(checklistItems);
+
+                // Stop if the last page has fewer items than page size
+                if (checklistItems.Count < pageSize)
+                {
+                    break;
+                }
+
+                currentPage++;
+            }
+
+            return allChecklistItems;
+        }
+
+        private string GenerateInspectionHtml(Checklist inspection, List<ChecklistItem> checklistItems)
         {
             if (inspection == null)
             {
                 throw new ArgumentNullException(nameof(inspection), "Inspection data is null.");
             }
 
-            Console.WriteLine($"Inspection ID: {inspection.Id}");
-            Console.WriteLine($"Inspection Name: {inspection.Name}");
-            Console.WriteLine($"Inspection Description: {inspection.Description}");
-            // Log other relevant fields to confirm they contain data
+            // Build inspection details HTML
+            StringBuilder htmlBuilder = new StringBuilder();
+            htmlBuilder.Append("<html><body>");
+            htmlBuilder.Append("<h1>Inspection Details</h1>");
+            htmlBuilder.Append("<table border='1'>");
+            htmlBuilder.Append("<tr><td><strong>ID</strong></td><td>" + inspection.Id + "</td></tr>");
+            htmlBuilder.Append("<tr><td><strong>Name</strong></td><td>" + (inspection.Name ?? "Unnamed Inspection") + "</td></tr>");
+            htmlBuilder.Append("<tr><td><strong>Status</strong></td><td>" + (inspection.Status ?? "N/A") + "</td></tr>");
+            htmlBuilder.Append("<tr><td><strong>Description</strong></td><td>" + (inspection.Description ?? "No description provided") + "</td></tr>");
+            htmlBuilder.Append("<tr><td><strong>Due Date</strong></td><td>" + (inspection.DueAt?.ToString("dd MMM, yyyy") ?? "N/A") + "</td></tr>");
+            htmlBuilder.Append("<tr><td><strong>Location</strong></td><td>" + (inspection.Location?.ToString() ?? "N/A") + "</td></tr>");
+            htmlBuilder.Append("<tr><td><strong>Created At</strong></td><td>" + inspection.CreatedAt.ToString("dd MMM, yyyy") + "</td></tr>");
+            htmlBuilder.Append("<tr><td><strong>Updated At</strong></td><td>" + inspection.UpdatedAt.ToString("dd MMM, yyyy") + "</td></tr>");
+            htmlBuilder.Append("</table>");
 
-            string templatePath = "C:\\Users\\Isabella\\OneDrive\\Desktop\\Bachelor's\\VIA Semester 9\\Bachelor's Project\\Code\\Procore.App\\Procore.Core\\Templates\\inspection_template.html";
-            string htmlTemplate = File.ReadAllText(templatePath);
+            // Add checklist items
+            htmlBuilder.Append("<h2>Checklist Items</h2>");
 
-            // Safely handle `Sections` property in case it's null
-            StringBuilder sectionsHtml = new StringBuilder();
-
-            if (inspection.Sections != null)
+            if (checklistItems != null && checklistItems.Any())
             {
-                foreach (var section in inspection.Sections)
+                htmlBuilder.Append("<table border='1'>");
+                htmlBuilder.Append("<tr><th>Item ID</th><th>Name</th><th>Status</th><th>Details</th><th>Updated At</th></tr>");
+
+                foreach (var item in checklistItems)
                 {
-                    sectionsHtml.Append($"<div class=\"section-title\">{section.Name ?? "Unnamed Section"}</div>");
-                    sectionsHtml.Append("<table class=\"inspection-table\"><tr><th>Item</th><th>Pass</th><th>Fail</th><th>N/A</th></tr>");
-
-                    int conformingCount = 0, deficientCount = 0, neutralCount = 0, naCount = 0;
-
-                    if (section.Items != null)
-                    {
-                        foreach (var item in section.Items)
-                        {
-                            string passChecked = item.Status == "Pass" ? "checked" : "";
-                            string failChecked = item.Status == "Fail" ? "checked" : "";
-                            string naChecked = item.Status == "N/A" ? "checked" : "";
-
-                            sectionsHtml.Append($"<tr><td>{item.Details ?? "No description"}</td>");
-                            sectionsHtml.Append($"<td><input type=\"checkbox\" {passChecked} /></td>");
-                            sectionsHtml.Append($"<td><input type=\"checkbox\" {failChecked} /></td>");
-                            sectionsHtml.Append($"<td><input type=\"checkbox\" {naChecked} /></td></tr>");
-
-                            // Increment counters based on item status
-                            switch (item.Status)
-                            {
-                                case "Pass": conformingCount++; break;
-                                case "Fail": deficientCount++; break;
-                                case "Neutral": neutralCount++; break;
-                                case "N/A": naCount++; break;
-                            }
-                        }
-                    }
-
-                    sectionsHtml.Append("</table>");
-                    sectionsHtml.Append($"<p>Summary: Conforming: {conformingCount}, Deficient: {deficientCount}, Neutral: {neutralCount}, N/A: {naCount}</p>");
+                    htmlBuilder.Append("<tr>");
+                    htmlBuilder.Append("<td>" + item.Id + "</td>");
+                    htmlBuilder.Append("<td>" + (item.Name ?? "Unnamed Item") + "</td>");
+                    htmlBuilder.Append("<td>" + (item.Status ?? "N/A") + "</td>");
+                    htmlBuilder.Append("<td>" + (item.Details ?? "No details provided") + "</td>");
+                    htmlBuilder.Append("<td>" + item.UpdatedAt.ToString("dd MMM, yyyy HH:mm:ss") + "</td>");
+                    htmlBuilder.Append("</tr>");
                 }
+
+                htmlBuilder.Append("</table>");
+            }
+            else
+            {
+                htmlBuilder.Append("<p>No checklist items available for this inspection.</p>");
             }
 
-            // Populate HTML template with inspection details and section HTML, using safe access patterns
-            string htmlContent = htmlTemplate
-                .Replace("{{CompanyName}}", "Vestas Wind Systems A/S")
-                .Replace("{{Project}}", "SP-60920 Baltic Eagle")
-                .Replace("{{Location}}", inspection.Location?.ToString() ?? "N/A")
-                .Replace("{{Name}}", inspection.Name ?? "Unnamed Inspection")
-                .Replace("{{Number}}", inspection.Number?.ToString() ?? "N/A")
-                .Replace("{{Status}}", inspection.Status ?? "N/A")
-                .Replace("{{DueDate}}", inspection.DueAt?.ToString("dd MMM, yyyy") ?? "N/A")
-                .Replace("{{Description}}", inspection.Description ?? "No description provided")
-                .Replace("{{Sections}}", sectionsHtml.ToString())
-                .Replace("{{PdfCreationDateTime}}", DateTime.Now.ToString("dd MMM, yyyy HH:mm:ss"));
-
-            return htmlContent;
+            htmlBuilder.Append("</body></html>");
+            return htmlBuilder.ToString();
         }
+
 
         public async Task<byte[]> CreateInspectionPdf(long projectId, long inspectionId)
         {
             var inspection = await GetInspectionById(projectId, inspectionId);
             if (inspection == null) throw new Exception("Inspection not found");
 
-            string htmlContent = GenerateInspectionHtml(inspection);
+            // Fetch checklist items for the inspection
+            var checklistItems = await GetChecklistItems(projectId, inspection.Id);
+
+            // Generate the HTML content, passing inspection and checklist items
+            string htmlContent = GenerateInspectionHtml(inspection, checklistItems);
 
             PdfDocument pdf = PdfGenerator.GeneratePdf(htmlContent, PdfSharp.PageSize.A4);
 
@@ -283,38 +279,12 @@ namespace Procore.Core
         public async Task<List<ObservationItem>> GetAllObservations(long projectId)
         {
             const int pageSize = 1000;
-            int currentPage = 1;
-            var allObservations = new List<ObservationItem>();
 
-            while (true)
-            {
-                var observationRequest = new ListObservationItemsRequest
-                {
-                    ProjectId = projectId,
-                    Page = currentPage,
-                    PerPage = pageSize
-                };
+            var tasks = Enumerable.Range(1, 10) // Assume maximum of 10 pages
+                .Select(page => GetObservationsPaged(projectId, page, pageSize));
 
-                var observationResponse = await _client.GetResponseAsync(observationRequest);
-                var observations = observationResponse.Result;
-
-                if (observations == null || !observations.Any())
-                {
-                    break; // Stop if there are no more results
-                }
-
-                allObservations.AddRange(observations);
-
-                // Stop if the last page of results is smaller than page size
-                if (observations.Count() < pageSize)
-                {
-                    break;
-                }
-
-                currentPage++; // Move to the next page
-            }
-
-            return allObservations;
+            var results = await Task.WhenAll(tasks);
+            return results.SelectMany(r => r).ToList();
         }
 
         public async Task<ObservationItem?> GetObservationById(long projectId, long observationId)
@@ -424,5 +394,54 @@ namespace Procore.Core
                 return stream.ToArray();
             }
         }
+
+        public async Task PrintInspectionWithItems(long projectId, long inspectionId)
+        {
+            // Retrieve the inspection details by ID
+            var inspection = await GetInspectionById(projectId, inspectionId);
+
+            if (inspection == null)
+            {
+                Console.WriteLine($"Inspection with ID {inspectionId} not found.");
+                return;
+            }
+
+            // Print inspection details
+            Console.WriteLine($"--- Inspection Details ---");
+            Console.WriteLine($"ID: {inspection.Id}");
+            Console.WriteLine($"Name: {inspection.Name ?? "Unnamed Inspection"}");
+            Console.WriteLine($"Status: {inspection.Status ?? "N/A"}");
+            Console.WriteLine($"Description: {inspection.Description ?? "No description provided"}");
+            Console.WriteLine($"Due Date: {inspection.DueAt?.ToString("dd MMM, yyyy") ?? "N/A"}");
+            Console.WriteLine($"Location: {inspection.Location?.ToString() ?? "N/A"}");
+            Console.WriteLine($"Created At: {inspection.CreatedAt.ToString("dd MMM, yyyy")}");
+            Console.WriteLine($"Updated At: {inspection.UpdatedAt.ToString("dd MMM, yyyy")}");
+            Console.WriteLine();
+
+            // Retrieve checklist items for this inspection
+            var checklistItems = await GetChecklistItems(projectId, inspection.Id);
+
+            // Print checklist items
+            if (checklistItems.Any())
+            {
+                Console.WriteLine($"--- Checklist Items for Inspection {inspection.Id} ---");
+                foreach (var item in checklistItems)
+                {
+                    Console.WriteLine($"   - Item ID: {item.Id}");
+                    Console.WriteLine($"     Name: {item.Name ?? "Unnamed Item"}");
+                    Console.WriteLine($"     Status: {item.Status ?? "N/A"}");
+                    Console.WriteLine($"     Details: {item.Details ?? "No details provided"}");
+                    Console.WriteLine($"     Updated At: {item.UpdatedAt.ToString("dd MMM, yyyy HH:mm:ss")}");
+                    Console.WriteLine();
+                }
+            }
+            else
+            {
+                Console.WriteLine("No checklist items found for this inspection.");
+            }
+
+            Console.WriteLine("------------------------------------");
+        }
+
     }
 }

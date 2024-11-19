@@ -43,7 +43,31 @@ var config = new Procore.Core.Config(clientId, clientSecret, isSandbox, baseUrl)
 // Initialize the client with the config object and pass the companyId
 var procoreClient = new Client(config, companyId);
 
-// Example usage for creating an observation PDF
+// Usage for printing a singular inspection with items
+long projectId = 562949953697461; 
+long inspectionId = 562949959611438;
+
+await procoreClient.PrintInspectionWithItems(projectId, inspectionId);
+
+try
+{
+    // Generate the PDF
+    byte[] pdfBytes = await procoreClient.CreateInspectionPdf(projectId, inspectionId);
+
+    // Define the file path to save the PDF
+    string pdfFilePath = "Inspection_Report.pdf";
+
+    // Save the PDF to the file system
+    await File.WriteAllBytesAsync(pdfFilePath, pdfBytes);
+
+    Console.WriteLine($"PDF successfully saved to: {pdfFilePath}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"An error occurred: {ex.Message}");
+}
+
+/* Example usage for creating an observation PDF
 long projectId = 562949953697461;
 long observationId = 562949954381592;
 
@@ -56,5 +80,5 @@ string pdfFilePath = "Observation_Report.pdf";
 // Save the byte array to a PDF file
 await File.WriteAllBytesAsync(pdfFilePath, pdfBytes);
 
-Console.WriteLine($"PDF saved to {pdfFilePath}");
+Console.WriteLine($"PDF saved to {pdfFilePath}");*/
 
