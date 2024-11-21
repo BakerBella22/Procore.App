@@ -47,7 +47,7 @@ var procoreClient = new Client(config, companyId);
 long projectId = 562949953697461; 
 long inspectionId = 562949959611438;
 
-await procoreClient.PrintInspectionWithItems(projectId, inspectionId);
+//await procoreClient.PrintInspectionWithItems(projectId, inspectionId);
 
 try
 {

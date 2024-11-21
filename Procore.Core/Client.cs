@@ -188,6 +188,7 @@ namespace Procore.Core
             return allChecklistItems;
         }
 
+        //TODO Peter - Why will this not print out any of the inspection items while the PrintInspectionsWithItems works to print out all items
         private string GenerateInspectionHtml(Checklist inspection, List<ChecklistItem> checklistItems)
         {
             if (inspection == null)
@@ -195,49 +196,58 @@ namespace Procore.Core
                 throw new ArgumentNullException(nameof(inspection), "Inspection data is null.");
             }
 
-            // Build inspection details HTML
-            StringBuilder htmlBuilder = new StringBuilder();
-            htmlBuilder.Append("<html><body>");
-            htmlBuilder.Append("<h1>Inspection Details</h1>");
-            htmlBuilder.Append("<table border='1'>");
-            htmlBuilder.Append("<tr><td><strong>ID</strong></td><td>" + inspection.Id + "</td></tr>");
-            htmlBuilder.Append("<tr><td><strong>Name</strong></td><td>" + (inspection.Name ?? "Unnamed Inspection") + "</td></tr>");
-            htmlBuilder.Append("<tr><td><strong>Status</strong></td><td>" + (inspection.Status ?? "N/A") + "</td></tr>");
-            htmlBuilder.Append("<tr><td><strong>Description</strong></td><td>" + (inspection.Description ?? "No description provided") + "</td></tr>");
-            htmlBuilder.Append("<tr><td><strong>Due Date</strong></td><td>" + (inspection.DueAt?.ToString("dd MMM, yyyy") ?? "N/A") + "</td></tr>");
-            htmlBuilder.Append("<tr><td><strong>Location</strong></td><td>" + (inspection.Location?.ToString() ?? "N/A") + "</td></tr>");
-            htmlBuilder.Append("<tr><td><strong>Created At</strong></td><td>" + inspection.CreatedAt.ToString("dd MMM, yyyy") + "</td></tr>");
-            htmlBuilder.Append("<tr><td><strong>Updated At</strong></td><td>" + inspection.UpdatedAt.ToString("dd MMM, yyyy") + "</td></tr>");
-            htmlBuilder.Append("</table>");
+            // Read the HTML template from file
+            string templatePath = "inspection_template.html";
+            string htmlTemplate = File.ReadAllText(templatePath);
 
-            // Add checklist items
-            htmlBuilder.Append("<h2>Checklist Items</h2>");
+            // Format dates for the inspection
+            string formattedInspectionDate = inspection.InspectionDate != null
+                ? DateTime.Parse(inspection.InspectionDate).ToString("dd MMM, yyyy")
+                : "N/A";
+            string formattedCreatedAt = inspection.CreatedAt.ToString("dd MMM, yyyy");
+            string formattedUpdatedAt = inspection.UpdatedAt.ToString("dd MMM, yyyy");
+            string formattedClosedAt = inspection.ClosedAt?.ToString("dd MMM, yyyy") ?? "N/A";
 
-            if (checklistItems != null && checklistItems.Any())
+            // Set the placeholder values in the template
+            string htmlContent = htmlTemplate
+                .Replace("{{CompanyName}}", "Vestas Wind Systems A/S")
+                .Replace("{{Address}}", "Hedeager 42, Aarhus N, Midtjylland 8200")
+                .Replace("{{PhoneNumber}}", "+4597300000")
+                .Replace("{{Project}}", "SP-60920 Baltic Eagle")
+                .Replace("{{Location}}", "Port of Rønne, Skansevej 11, Rønne, Sjælland 3700")
+                .Replace("{{InspectionName}}", inspection.Name ?? "Unnamed Inspection")
+                .Replace("{{InspectionNumber}}", inspection.Number?.ToString() ?? "N/A")
+                .Replace("{{InspectionStatus}}", inspection.Status ?? "N/A")
+                .Replace("{{InspectionDescription}}", inspection.Description ?? "No description provided")
+                .Replace("{{InspectionDate}}", formattedInspectionDate)
+                .Replace("{{CreatedAt}}", formattedCreatedAt)
+                .Replace("{{UpdatedAt}}", formattedUpdatedAt)
+                .Replace("{{ClosedAt}}", formattedClosedAt);
+
+            // Add Checklist Items Table
+            StringBuilder checklistTable = new StringBuilder();
+            checklistTable.Append("<table border='1'><tr><th>Item Name</th><th>Responded With</th><th>Responder Name</th><th>Updated At</th></tr>");
+
+            foreach (var item in checklistItems)
             {
-                htmlBuilder.Append("<table border='1'>");
-                htmlBuilder.Append("<tr><th>Item ID</th><th>Name</th><th>Status</th><th>Details</th><th>Updated At</th></tr>");
-
-                foreach (var item in checklistItems)
-                {
-                    htmlBuilder.Append("<tr>");
-                    htmlBuilder.Append("<td>" + item.Id + "</td>");
-                    htmlBuilder.Append("<td>" + (item.Name ?? "Unnamed Item") + "</td>");
-                    htmlBuilder.Append("<td>" + (item.Status ?? "N/A") + "</td>");
-                    htmlBuilder.Append("<td>" + (item.Details ?? "No details provided") + "</td>");
-                    htmlBuilder.Append("<td>" + item.UpdatedAt.ToString("dd MMM, yyyy HH:mm:ss") + "</td>");
-                    htmlBuilder.Append("</tr>");
-                }
-
-                htmlBuilder.Append("</table>");
+                checklistTable.Append("<tr>");
+                checklistTable.Append("<td>" + (item.Name ?? "Unnamed Item") + "</td>");
+                checklistTable.Append("<td>" + (item.RespondedWith ?? "N/A") + "</td>");
+                checklistTable.Append("<td>" + (item.ItemResponse?.Responder?.Name ?? "No responder") + "</td>");
+                checklistTable.Append("<td>" + item.UpdatedAt.ToString("dd MMM, yyyy HH:mm:ss") + "</td>");
+                checklistTable.Append("</tr>");
             }
-            else
-            {
-                htmlBuilder.Append("<p>No checklist items available for this inspection.</p>");
-            }
+            checklistTable.Append("</table>");
 
-            htmlBuilder.Append("</body></html>");
-            return htmlBuilder.ToString();
+            // Replace placeholder with actual checklist items table
+            htmlContent = htmlContent.Replace("{{ChecklistItemsTable}}", checklistTable.ToString());
+
+            // Add signature information
+            string signatureSection = "<p>Inspection closed by: Dean Stidolph on 20 May, 2024 at 05:20 AM CEST</p>";
+            htmlContent = htmlContent.Replace("{{Signature}}", signatureSection);
+
+            // Return the final HTML content
+            return htmlContent;
         }
 
 
@@ -413,7 +423,7 @@ namespace Procore.Core
             Console.WriteLine($"Status: {inspection.Status ?? "N/A"}");
             Console.WriteLine($"Description: {inspection.Description ?? "No description provided"}");
             Console.WriteLine($"Due Date: {inspection.DueAt?.ToString("dd MMM, yyyy") ?? "N/A"}");
-            Console.WriteLine($"Location: {inspection.Location?.ToString() ?? "N/A"}");
+            Console.WriteLine($"Location: {inspection.Location?.Name ?? "N/A"}, Node: {inspection.Location?.NodeName ?? "N/A"}");
             Console.WriteLine($"Created At: {inspection.CreatedAt.ToString("dd MMM, yyyy")}");
             Console.WriteLine($"Updated At: {inspection.UpdatedAt.ToString("dd MMM, yyyy")}");
             Console.WriteLine();
@@ -442,6 +452,5 @@ namespace Procore.Core
 
             Console.WriteLine("------------------------------------");
         }
-
     }
 }

@@ -1,3 +1,4 @@
+using MAD.API.Procore.Endpoints.ProjectDates.Models;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 using PdfSharp.Drawing;
@@ -5,10 +6,12 @@ using PdfSharp.Pdf;
 using Procore.App.Models;
 using Procore.App.Services;
 using Procore.Core;
+using SmartFormat;
 using System.IO.Compression;
 using System.Text;
 using System.Threading.Tasks;
 using TheArtOfDev.HtmlRenderer.PdfSharp;
+
 
 
 namespace Procore.App.Controllers
@@ -117,6 +120,13 @@ namespace Procore.App.Controllers
                 return BadRequest("No observations selected.");
             }
 
+            var data = new Dictionary<string, string>
+            {
+                { "location1", "LOC1" },
+                {"location2" , "LOC2" },
+                {"projectname" , "PNAME" }
+            };
+
             //Move the next following lines into QueueListenerService.cs and return an object with the jobId
             try
             {
@@ -127,10 +137,14 @@ namespace Procore.App.Controllers
                     {
                         foreach (var observationId in request.ObservationIds)
                         {
+                            data["observationId"] = observationId;
+
                             var pdfBytes = await _client.CreateObservationPdf(request.ProjectId, long.Parse(observationId));
+                            var filename = Smart.Format(request.Filename + "_{observationId}.pdf", data);
+
 
                             // Create a ZIP entry for each PDF
-                            var zipEntry = archive.CreateEntry($"{observationId}_Observation_Report.pdf", CompressionLevel.Fastest);
+                            var zipEntry = archive.CreateEntry(filename, CompressionLevel.Fastest);
                             using (var entryStream = zipEntry.Open())
                             {
                                 await entryStream.WriteAsync(pdfBytes, 0, pdfBytes.Length);
@@ -142,6 +156,7 @@ namespace Procore.App.Controllers
                     // TODO: Save the ZIP file to Azure Blob Storage in the folder /jobs/{jobId}
 
                     // Return the ZIP file as a downloadable response
+                    var zipfilename = Smart.Format(request.Filename + ".zip", data);
                     return File(memoryStream.ToArray(), "application/zip", "Selected_Observations_Reports.zip");
                 }
             }
@@ -156,10 +171,10 @@ namespace Procore.App.Controllers
         {
             // THIS IS PROBABLY A REALLY GOOD CANDIATE FOR A QUEUE DTO
             public long ProjectId { get; set; }
+            public string? Filename { get; set; }
             public List<string> ObservationIds { get; set; }
         }
 
-        [HttpPost]
         [HttpPost]
         public async Task<IActionResult> ExportSelectedInspections([FromBody] InspectionExportRequest request)
         {
@@ -198,6 +213,7 @@ namespace Procore.App.Controllers
         public class InspectionExportRequest
         {
             public long ProjectId { get; set; }
+            public string? Filename { get; set; }
             public List<string> InspectionIds { get; set; }
         }
 

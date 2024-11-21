@@ -52,6 +52,13 @@
     <p>Your download is in progress. This may take a few moments...</p>
 </div>
 
+
+<div id="filenameSelector" style="display:none; margin-top:20px;">
+    Selected filename:
+    <input name="filename" id="filename" value="{location1}-{location2}-{projectname}" />
+</div>
+
+
 <!-- Select button where format is string, input is coming from the export -->
 
 <div id="exportInspections" style="display:none; margin-top:20px;">
@@ -131,6 +138,7 @@
                 } else if (type === 'observations') {
                     document.getElementById('exportObservations').style.display = 'block';
                 }
+                document.getElementById("filenameSelector").style.display = "block";
             } catch (error) {
                 resultDisplay.innerHTML = `<p style="color: red;">Error fetching data: ${error.message}</p>`;
             } finally {
@@ -270,6 +278,8 @@
                 return;
             }
 
+            const filename = document.getElementById("filename").value;
+
             try {
                 alert("Download started for selected observations.");
                 const response = await fetch('/Home/ExportSelectedObservations', {
@@ -279,7 +289,8 @@
                     },
                     body: JSON.stringify({
                         projectId: parseInt(projectId),
-                        observationIds: selectedObservations // Send the selected IDs
+                        observationIds: selectedObservations, // Send the selected IDs
+                                filename: filename
                     })
                 });
 
@@ -319,6 +330,8 @@
                 return;
             }
 
+            const filename = document.getElementById("filename").value;
+
             try {
                 alert("Download started for selected inspections.");
                 const response = await fetch('/Home/ExportSelectedInspections', {
@@ -328,7 +341,8 @@
                     },
                     body: JSON.stringify({
                         projectId: parseInt(projectId),
-                        inspectionIds: selectedInspections // Send the selected IDs
+                        inspectionIds: selectedInspections, // Send the selected IDs
+                        filename: filename
                     })
                 });
 
