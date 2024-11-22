@@ -224,20 +224,23 @@ namespace Procore.Core
                 .Replace("{{UpdatedAt}}", formattedUpdatedAt)
                 .Replace("{{ClosedAt}}", formattedClosedAt);
 
-            // Add Checklist Items Table
             StringBuilder checklistTable = new StringBuilder();
-            checklistTable.Append("<table border='1'><tr><th>Item Name</th><th>Responded With</th><th>Responder Name</th><th>Updated At</th></tr>");
 
-            foreach (var item in checklistItems)
+            // Print checklist items
+            if (checklistItems.Any())
             {
-                checklistTable.Append("<tr>");
-                checklistTable.Append("<td>" + (item.Name ?? "Unnamed Item") + "</td>");
-                checklistTable.Append("<td>" + (item.RespondedWith ?? "N/A") + "</td>");
-                checklistTable.Append("<td>" + (item.ItemResponse?.Responder?.Name ?? "No responder") + "</td>");
-                checklistTable.Append("<td>" + item.UpdatedAt.ToString("dd MMM, yyyy HH:mm:ss") + "</td>");
-                checklistTable.Append("</tr>");
+                // Should we have a scenario where we do not want to show the headers or title for checklist items,
+                // if there are none, then move lines 145-151 of both inspection_template.html into this if block
+                foreach (var item in checklistItems)
+                {
+                    checklistTable.Append("<tr>");
+                    checklistTable.Append("<td>" + (item.Name ?? "Unnamed Item") + "</td>");
+                    checklistTable.Append("<td>" + (item.RespondedWith ?? "N/A") + "</td>");
+                    checklistTable.Append("<td>" + (item.ItemResponse?.Responder?.Name ?? "No responder") + "</td>");
+                    checklistTable.Append("<td>" + item.UpdatedAt.ToString("dd MMM, yyyy HH:mm:ss") + "</td>");
+                    checklistTable.Append("</tr>");
+                }
             }
-            checklistTable.Append("</table>");
 
             // Replace placeholder with actual checklist items table
             htmlContent = htmlContent.Replace("{{ChecklistItemsTable}}", checklistTable.ToString());
